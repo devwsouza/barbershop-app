@@ -10,62 +10,83 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [barberId, setBarberId] = useState("1");
 
-  // ✅ carregar agendamentos (sem cache)
+  // 🔥 pegar tenant do login
+  const getTenantId = () => {
+    return localStorage.getItem("tenantId");
+  };
+
+  // ✅ carregar agendamentos
   const loadAppointments = async () => {
     try {
+      const tenantId = getTenantId();
+
+      if (!tenantId) {
+        window.location.href = "/login";
+        return;
+      }
+
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/appointments",
-        { cache: "no-store" } // 🚀 evita cache do celular/PWA
+        {
+          headers: {
+            tenantId: tenantId
+          },
+          cache: "no-store"
+        }
       );
+
       const data = await res.json();
       setAppointments(data);
     } catch (err) {
-      console.error("Erro ao carregar agendamentos:", err);
+      console.error("Erro ao carregar:", err);
     }
   };
 
-  // ✅ criar agendamento
+  // ✅ criar
   const createAppointment = async (hora) => {
     try {
+      const tenantId = getTenantId();
+
       await fetch("https://barbershop-full-gah5.onrender.com/appointments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          tenantId: tenantId
+        },
         body: JSON.stringify({ barberId, time: hora })
       });
 
-      loadAppointments(); // 🔥 atualiza após criar
+      loadAppointments();
     } catch (err) {
-      console.error("Erro ao criar agendamento:", err);
+      console.error("Erro ao criar:", err);
     }
   };
 
-  // ✅ cancelar agendamento
+  // ✅ cancelar
   const cancelAppointment = async (id) => {
     try {
+      const tenantId = getTenantId();
+
       await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          headers: {
+            tenantId: tenantId
+          }
+        }
       );
 
-      loadAppointments(); // 🔥 atualiza após cancelar
+      loadAppointments();
     } catch (err) {
       console.error("Erro ao cancelar:", err);
     }
   };
 
-  // ✅ inicial + auto atualização
   useEffect(() => {
     loadAppointments();
 
-    // 🔥 atualização automática (sincroniza todos dispositivos)
-    const interval = setInterval(() => {
-      loadAppointments();
-    }, 5000); // a cada 5 segundos
-
-    // ✅ service worker (PWA)
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      //navigator.serviceWorker.register("/sw.js");
-    }
+    const interval = setInterval(loadAppointments, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -73,7 +94,6 @@ export default function Home() {
   return (
     <div style={styles.container}>
 
-      {/* HEADER */}
       <div style={styles.header}>
         💈 Barbearia Pro
       </div>
@@ -95,6 +115,7 @@ export default function Home() {
 
         <div style={styles.grid}>
           {horarios.map(hora => {
+
             const agendamento = appointments.find(
               a => a.time === hora && a.barberId === barberId
             );
