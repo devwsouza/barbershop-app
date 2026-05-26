@@ -19,39 +19,41 @@ export default function Home() {
     return null;
   };
 
-  // ✅ carregar agendamentos
+  // ✅ carregar agendamentos (VERSÃO FINAL SEGURA)
   const loadAppointments = async () => {
     try {
       const tenantId = getTenantId();
 
+      // 🚨 não faz requisição inválida
       if (!tenantId) {
-        window.location.href = "/login";
+        console.log("Sem tenant, abortando request");
         return;
       }
 
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/appointments",
         {
-          headers: {
-            tenantId: tenantId
-          },
+          headers: { tenantId },
           cache: "no-store"
         }
       );
 
+      // ✅ evita erro 500 quebrar o app
       if (!res.ok) {
-        console.error("Erro na API:", res.status);
+        console.warn("Erro na API:", res.status);
         return;
       }
 
       const data = await res.json();
 
+      // ✅ garante que é array
       if (!Array.isArray(data)) {
-        console.error("Resposta inválida:", data);
+        console.warn("Resposta inválida:", data);
         return;
       }
 
       setAppointments(data);
+
     } catch (err) {
       console.error("Erro ao carregar:", err);
     }
@@ -61,14 +63,13 @@ export default function Home() {
   const createAppointment = async (hora) => {
     try {
       const tenantId = getTenantId();
-
       if (!tenantId) return;
 
       await fetch("https://barbershop-full-gah5.onrender.com/appointments", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          tenantId: tenantId
+          tenantId
         },
         body: JSON.stringify({ barberId, time: hora })
       });
@@ -83,16 +84,13 @@ export default function Home() {
   const cancelAppointment = async (id) => {
     try {
       const tenantId = getTenantId();
-
       if (!tenantId) return;
 
       await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
         {
           method: "DELETE",
-          headers: {
-            tenantId: tenantId
-          }
+          headers: { tenantId }
         }
       );
 
@@ -102,13 +100,13 @@ export default function Home() {
     }
   };
 
-  // ✅ proteção de login (CRÍTICO)
+  // ✅ proteção de login + controle de loop
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tenantId = localStorage.getItem("tenantId");
 
-    // 🔥 bloqueia acesso sem login
+    // 🚨 bloqueia acesso sem login
     if (!tenantId || tenantId === "undefined") {
       localStorage.clear();
       window.location.href = "/login";
@@ -117,7 +115,14 @@ export default function Home() {
 
     loadAppointments();
 
-    const interval = setInterval(loadAppointments, 5000);
+    const interval = setInterval(() => {
+      const tenant = getTenantId();
+
+      // ✅ só executa se tiver tenant válido
+      if (tenant) {
+        loadAppointments();
+      }
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -148,7 +153,7 @@ export default function Home() {
           {horarios.map(hora => {
 
             const agendamento = appointments.find(
-              a => a.time === hora && a.barberId === barberId
+              (a) => a.time === hora && a.barberId === barberId
             );
 
             return (
@@ -190,7 +195,7 @@ export default function Home() {
   );
 }
 
-/* 🎨 ESTILO */
+/* 🎨 ESTILOS */
 const styles = {
   container: {
     fontFamily: "Arial",
