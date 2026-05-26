@@ -10,9 +10,13 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [barberId, setBarberId] = useState("1");
 
-  // 🔥 pegar tenant do login
+  // ✅ pegar tenant com segurança
   const getTenantId = () => {
-    return localStorage.getItem("tenantId");
+    if (typeof window !== "undefined") {
+      const tenantId = localStorage.getItem("tenantId");
+      return tenantId && tenantId !== "undefined" ? tenantId : null;
+    }
+    return null;
   };
 
   // ✅ carregar agendamentos
@@ -35,17 +39,30 @@ export default function Home() {
         }
       );
 
+      if (!res.ok) {
+        console.error("Erro na API:", res.status);
+        return;
+      }
+
       const data = await res.json();
+
+      if (!Array.isArray(data)) {
+        console.error("Resposta inválida:", data);
+        return;
+      }
+
       setAppointments(data);
     } catch (err) {
       console.error("Erro ao carregar:", err);
     }
   };
 
-  // ✅ criar
+  // ✅ criar agendamento
   const createAppointment = async (hora) => {
     try {
       const tenantId = getTenantId();
+
+      if (!tenantId) return;
 
       await fetch("https://barbershop-full-gah5.onrender.com/appointments", {
         method: "POST",
@@ -62,10 +79,12 @@ export default function Home() {
     }
   };
 
-  // ✅ cancelar
+  // ✅ cancelar agendamento
   const cancelAppointment = async (id) => {
     try {
       const tenantId = getTenantId();
+
+      if (!tenantId) return;
 
       await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
@@ -83,7 +102,19 @@ export default function Home() {
     }
   };
 
+  // ✅ proteção de login (CRÍTICO)
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const tenantId = localStorage.getItem("tenantId");
+
+    // 🔥 bloqueia acesso sem login
+    if (!tenantId || tenantId === "undefined") {
+      localStorage.clear();
+      window.location.href = "/login";
+      return;
+    }
+
     loadAppointments();
 
     const interval = setInterval(loadAppointments, 5000);
