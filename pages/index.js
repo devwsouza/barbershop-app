@@ -10,7 +10,7 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [barberId, setBarberId] = useState("1");
 
-  // 🔥 CRM
+  // ✅ CRM
   const [clients, setClients] = useState([]);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -22,6 +22,18 @@ export default function Home() {
       return tenantId && tenantId !== "undefined" ? tenantId : null;
     }
     return null;
+  };
+
+  // ✅ LOGOUT
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
+  };
+
+  // ✅ pegar nome do cliente
+  const getClientName = (clientId) => {
+    const client = clients.find(c => c.id === clientId);
+    return client ? client.name : "Cliente";
   };
 
   // ✅ AGENDAMENTOS
@@ -49,7 +61,7 @@ export default function Home() {
     }
   };
 
-  // ✅ CLIENTES (CRM)
+  // ✅ CLIENTES
   const loadClients = async () => {
     try {
       const tenantId = getTenantId();
@@ -104,7 +116,7 @@ export default function Home() {
     }
   };
 
-  // ✅ CRIAR AGENDAMENTO (AGORA COM CLIENTE)
+  // ✅ CRIAR AGENDAMENTO
   const createAppointment = async (hora) => {
     try {
       const tenantId = getTenantId();
@@ -171,12 +183,16 @@ export default function Home() {
 
       <div style={styles.header}>
         💈 Barbearia Pro
+
+        <button onClick={logout} style={styles.logout}>
+          Sair
+        </button>
       </div>
 
       <div style={styles.content}>
 
-        {/* 🔥 CRM */}
-        <div style={{ marginBottom: 20 }}>
+        {/* CRM */}
+        <div style={styles.crmBox}>
           <h3>Novo Cliente</h3>
 
           <input
@@ -232,11 +248,16 @@ export default function Home() {
 
             return (
               <div key={hora} style={styles.card}>
-                <div>{hora}</div>
+                <div style={styles.time}>{hora}</div>
 
                 {agendamento ? (
                   <>
-                    <span>Agendado</span>
+                    <span style={styles.clientName}>
+                      {agendamento.clientId
+                        ? getClientName(agendamento.clientId)
+                        : "Agendado"}
+                    </span>
+
                     <button onClick={() => cancelAppointment(agendamento.id)}>
                       Cancelar
                     </button>
@@ -257,8 +278,66 @@ export default function Home() {
 }
 
 const styles = {
-  container: { padding: 20 },
-  content: { maxWidth: 900, margin: "0 auto" },
-  grid: { display: "grid", gap: 10 },
-  card: { padding: 10, border: "1px solid #ccc" }
+  container: {
+    fontFamily: "Arial",
+    background: "#f1f5f9",
+    minHeight: "100vh"
+  },
+
+  header: {
+    background: "#0f172a",
+    color: "white",
+    padding: 20,
+    display: "flex",
+    justifyContent: "space-between"
+  },
+
+  logout: {
+    background: "#ef4444",
+    color: "white",
+    border: "none",
+    padding: "8px 12px",
+    cursor: "pointer"
+  },
+
+  content: {
+    padding: 20,
+    maxWidth: 900,
+    margin: "0 auto"
+  },
+
+  crmBox: {
+    marginBottom: 20
+  },
+
+  topBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 20
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: 10
+  },
+
+  card: {
+    padding: 15,
+    border: "1px solid #ddd",
+    borderRadius: 8,
+    background: "white"
+  },
+
+  time: {
+    fontWeight: "bold",
+    marginBottom: 10
+  },
+
+  clientName: {
+    display: "block",
+    color: "#22c55e",
+    fontWeight: "bold",
+    marginBottom: 10
+  }
 };
