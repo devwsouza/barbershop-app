@@ -10,7 +10,12 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [barberId, setBarberId] = useState("1");
 
-  // ✅ pegar tenant com segurança
+  // 🔥 CRM
+  const [clients, setClients] = useState([]);
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [selectedClient, setSelectedClient] = useState("");
+
   const getTenantId = () => {
     if (typeof window !== "undefined") {
       const tenantId = localStorage.getItem("tenantId");
@@ -19,47 +24,87 @@ export default function Home() {
     return null;
   };
 
-  // ✅ carregar agendamentos (VERSÃO FINAL SEGURA)
+  // ✅ AGENDAMENTOS
   const loadAppointments = async () => {
     try {
       const tenantId = getTenantId();
-
-      // 🚨 não faz requisição inválida
-      if (!tenantId) {
-        console.log("Sem tenant, abortando request");
-        return;
-      }
+      if (!tenantId) return;
 
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/appointments",
         {
-          headers: { tenantId },
-          cache: "no-store"
+          headers: { tenantId }
         }
       );
 
-      // ✅ evita erro 500 quebrar o app
-      if (!res.ok) {
-        console.warn("Erro na API:", res.status);
-        return;
-      }
+      if (!res.ok) return;
 
       const data = await res.json();
-
-      // ✅ garante que é array
-      if (!Array.isArray(data)) {
-        console.warn("Resposta inválida:", data);
-        return;
+      if (Array.isArray(data)) {
+        setAppointments(data);
       }
 
-      setAppointments(data);
-
     } catch (err) {
-      console.error("Erro ao carregar:", err);
+      console.error(err);
     }
   };
 
-  // ✅ criar agendamento
+  // ✅ CLIENTES (CRM)
+  const loadClients = async () => {
+    try {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+
+      const res = await fetch(
+        "https://barbershop-full-gah5.onrender.com/clients",
+        {
+          headers: { tenantId }
+        }
+      );
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setClients(data);
+      }
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ CRIAR CLIENTE
+  const createClient = async () => {
+    try {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+
+      await fetch(
+        "https://barbershop-full-gah5.onrender.com/clients",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tenantId
+          },
+          body: JSON.stringify({
+            name: clientName,
+            phone: clientPhone
+          })
+        }
+      );
+
+      setClientName("");
+      setClientPhone("");
+      loadClients();
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ✅ CRIAR AGENDAMENTO (AGORA COM CLIENTE)
   const createAppointment = async (hora) => {
     try {
       const tenantId = getTenantId();
@@ -71,16 +116,20 @@ export default function Home() {
           "Content-Type": "application/json",
           tenantId
         },
-        body: JSON.stringify({ barberId, time: hora })
+        body: JSON.stringify({
+          barberId,
+          time: hora,
+          clientId: selectedClient || null
+        })
       });
 
       loadAppointments();
+
     } catch (err) {
-      console.error("Erro ao criar:", err);
+      console.error(err);
     }
   };
 
-  // ✅ cancelar agendamento
   const cancelAppointment = async (id) => {
     try {
       const tenantId = getTenantId();
@@ -95,18 +144,17 @@ export default function Home() {
       );
 
       loadAppointments();
+
     } catch (err) {
-      console.error("Erro ao cancelar:", err);
+      console.error(err);
     }
   };
 
-  // ✅ proteção de login + controle de loop
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tenantId = localStorage.getItem("tenantId");
 
-    // 🚨 bloqueia acesso sem login
     if (!tenantId || tenantId === "undefined") {
       localStorage.clear();
       window.location.href = "/login";
@@ -114,17 +162,8 @@ export default function Home() {
     }
 
     loadAppointments();
+    loadClients();
 
-    const interval = setInterval(() => {
-      const tenant = getTenantId();
-
-      // ✅ só executa se tiver tenant válido
-      if (tenant) {
-        loadAppointments();
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -136,13 +175,48 @@ export default function Home() {
 
       <div style={styles.content}>
 
+        {/* 🔥 CRM */}
+        <div style={{ marginBottom: 20 }}>
+          <h3>Novo Cliente</h3>
+
+          <input
+            placeholder="Nome"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+          />
+
+          <input
+            placeholder="Telefone"
+            value={clientPhone}
+            onChange={(e) => setClientPhone(e.target.value)}
+          />
+
+          <button onClick={createClient}>
+            Cadastrar Cliente
+          </button>
+
+          <br /><br />
+
+          <select
+            value={selectedClient}
+            onChange={(e) => setSelectedClient(e.target.value)}
+          >
+            <option value="">Selecionar cliente</option>
+            {clients.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* AGENDA */}
         <div style={styles.topBar}>
           <h2>Agenda</h2>
 
           <select
             value={barberId}
             onChange={(e) => setBarberId(e.target.value)}
-            style={styles.select}
           >
             <option value="1">Barbeiro 1</option>
             <option value="2">Barbeiro 2</option>
@@ -153,35 +227,22 @@ export default function Home() {
           {horarios.map(hora => {
 
             const agendamento = appointments.find(
-              (a) => a.time === hora && a.barberId === barberId
+              a => a.time === hora && a.barberId === barberId
             );
 
             return (
-              <div
-                key={hora}
-                style={{
-                  ...styles.card,
-                  background: agendamento ? "#ecfdf5" : "white"
-                }}
-              >
-                <div style={styles.time}>{hora}</div>
+              <div key={hora} style={styles.card}>
+                <div>{hora}</div>
 
                 {agendamento ? (
-                  <div style={styles.actions}>
-                    <span style={styles.badge}>Agendado</span>
-
-                    <button
-                      style={styles.cancelBtn}
-                      onClick={() => cancelAppointment(agendamento.id)}
-                    >
+                  <>
+                    <span>Agendado</span>
+                    <button onClick={() => cancelAppointment(agendamento.id)}>
                       Cancelar
                     </button>
-                  </div>
+                  </>
                 ) : (
-                  <button
-                    style={styles.button}
-                    onClick={() => createAppointment(hora)}
-                  >
+                  <button onClick={() => createAppointment(hora)}>
                     Agendar
                   </button>
                 )}
@@ -195,86 +256,9 @@ export default function Home() {
   );
 }
 
-/* 🎨 ESTILOS */
 const styles = {
-  container: {
-    fontFamily: "Arial",
-    background: "#f1f5f9",
-    minHeight: "100vh"
-  },
-
-  header: {
-    background: "#0f172a",
-    color: "white",
-    padding: "20px",
-    fontSize: "20px"
-  },
-
-  content: {
-    padding: "30px",
-    maxWidth: "900px",
-    margin: "0 auto"
-  },
-
-  topBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "20px"
-  },
-
-  select: {
-    padding: "8px",
-    borderRadius: "6px"
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-    gap: "15px"
-  },
-
-  card: {
-    padding: "20px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-    display: "flex",
-    flexDirection: "column"
-  },
-
-  time: {
-    fontSize: "18px",
-    fontWeight: "600"
-  },
-
-  button: {
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    padding: "10px",
-    borderRadius: "8px",
-    cursor: "pointer"
-  },
-
-  cancelBtn: {
-    background: "#ef4444",
-    color: "white",
-    border: "none",
-    padding: "8px",
-    borderRadius: "6px",
-    cursor: "pointer"
-  },
-
-  actions: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginTop: "10px"
-  },
-
-  badge: {
-    background: "#22c55e",
-    color: "white",
-    padding: "5px 10px",
-    borderRadius: "20px",
-    fontSize: "12px"
-  }
+  container: { padding: 20 },
+  content: { maxWidth: 900, margin: "0 auto" },
+  grid: { display: "grid", gap: 10 },
+  card: { padding: 10, border: "1px solid #ccc" }
 };
