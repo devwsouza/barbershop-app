@@ -183,10 +183,18 @@ export default function Home() {
 
       <div style={styles.header}>
         💈 Barbearia Pro
+        
+        <button
+          onClick={() => window.location.href = "/clients"}
+          style={{ marginLeft: 10 }}
+        >
+          Clientes
+        </button>
 
         <button onClick={logout} style={styles.logout}>
           Sair
         </button>
+        
       </div>
 
       <div style={styles.content}>
