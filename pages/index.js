@@ -10,7 +10,6 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [barberId, setBarberId] = useState("1");
 
-  // ✅ CRM
   const [clients, setClients] = useState([]);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -29,13 +28,12 @@ export default function Home() {
     window.location.href = "/login";
   };
 
-  // ✅ MAIS RÁPIDO
   const getClientName = (clientId) => {
     const client = clients.find(c => c.id === clientId);
     return client?.name || "Cliente";
   };
 
-  // ✅ AGENDAMENTOS
+  // ✅ LOAD APPOINTMENTS
   const loadAppointments = async () => {
     try {
       const tenantId = getTenantId();
@@ -52,17 +50,16 @@ export default function Home() {
       if (!res.ok) return;
 
       const data = await res.json();
-
       if (Array.isArray(data)) {
         setAppointments(data);
       }
 
     } catch (err) {
-      console.error("Erro appointments:", err);
+      console.error(err);
     }
   };
 
-  // ✅ CLIENTES
+  // ✅ LOAD CLIENTS
   const loadClients = async () => {
     try {
       const tenantId = getTenantId();
@@ -79,22 +76,30 @@ export default function Home() {
       if (!res.ok) return;
 
       const data = await res.json();
-
       if (Array.isArray(data)) {
         setClients(data);
       }
 
     } catch (err) {
-      console.error("Erro clients:", err);
+      console.error(err);
     }
   };
 
-  // ✅ CRIAR CLIENTE (ATUALIZA IMEDIATO)
+  // ✅ CREATE CLIENT (instantâneo)
   const createClient = async () => {
-    try {
-      const tenantId = getTenantId();
-      if (!tenantId) return;
+    const tenantId = getTenantId();
+    if (!tenantId) return;
 
+    const newClient = {
+      id: Math.random().toString(),
+      name: clientName,
+      phone: clientPhone
+    };
+
+    // 🚀 atualiza UI na hora
+    setClients(prev => [...prev, newClient]);
+
+    try {
       await fetch(
         "https://barbershop-full-gah5.onrender.com/clients",
         {
@@ -120,41 +125,55 @@ export default function Home() {
     }
   };
 
-  // ✅ CRIAR AGENDAMENTO (SINCRONIZA CLIENTE TAMBÉM)
+  // ✅ CREATE APPOINTMENT (instantâneo)
   const createAppointment = async (hora) => {
+    const tenantId = getTenantId();
+    if (!tenantId) return;
+
+    const tempId = Math.random().toString();
+
+    const newAppointment = {
+      id: tempId,
+      barberId,
+      time: hora,
+      clientId: selectedClient || null
+    };
+
+    // 🚀 UI instantânea
+    setAppointments(prev => [...prev, newAppointment]);
+
     try {
-      const tenantId = getTenantId();
-      if (!tenantId) return;
+      await fetch(
+        "https://barbershop-full-gah5.onrender.com/appointments",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tenantId
+          },
+          body: JSON.stringify(newAppointment)
+        }
+      );
 
-      await fetch("https://barbershop-full-gah5.onrender.com/appointments", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          tenantId
-        },
-        body: JSON.stringify({
-          barberId,
-          time: hora,
-          clientId: selectedClient || null
-        })
-      });
-
-      // ✅ sincronização imediata completa
       await loadAppointments();
-      await loadClients();
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ CANCELAR (SEGURANÇA + ATUALIZAÇÃO)
+  // ✅ CANCEL APPOINTMENT (instantâneo)
   const cancelAppointment = async (id) => {
-    try {
-      const tenantId = getTenantId();
-      if (!tenantId) return;
+    const tenantId = getTenantId();
+    if (!tenantId) return;
 
-      const res = await fetch(
+    // 🚀 remove da UI imediatamente
+    setAppointments(prev =>
+      prev.filter(a => a.id !== id)
+    );
+
+    try {
+      await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
         {
           method: "DELETE",
@@ -162,22 +181,15 @@ export default function Home() {
         }
       );
 
-      if (!res.ok) {
-        console.error("Erro ao cancelar:", res.status);
-        return;
-      }
-
       await loadAppointments();
 
     } catch (err) {
-      console.error("Erro ao cancelar:", err);
+      console.error(err);
     }
   };
 
-  // ✅ SINCRONIZAÇÃO (AGORA MAIS RÁPIDA)
+  // ✅ INIT + SYNC
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
     const tenantId = localStorage.getItem("tenantId");
 
     if (!tenantId || tenantId === "undefined") {
@@ -189,11 +201,10 @@ export default function Home() {
     loadAppointments();
     loadClients();
 
-    // 🚀 reduzido de 5s → 3s
+    // ✅ polling leve (backup)
     const interval = setInterval(() => {
       loadAppointments();
-      loadClients();
-    }, 3000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -204,16 +215,18 @@ export default function Home() {
       <div style={styles.header}>
         💈 Barbearia Pro
         
-        <button
-          onClick={() => window.location.href = "/clients"}
-          style={{ marginLeft: 10 }}
-        >
-          Clientes
-        </button>
+        <div>
+          <button
+            onClick={() => window.location.href = "/clients"}
+            style={{ marginRight: 10 }}
+          >
+            Clientes
+          </button>
 
-        <button onClick={logout} style={styles.logout}>
-          Sair
-        </button>
+          <button onClick={logout} style={styles.logout}>
+            Sair
+          </button>
+        </div>
       </div>
 
       <div style={styles.content}>
@@ -235,7 +248,7 @@ export default function Home() {
           />
 
           <button onClick={createClient}>
-            Cadastrar Cliente
+            Cadastrar
           </button>
 
           <br /><br />
@@ -294,6 +307,7 @@ export default function Home() {
                     Agendar
                   </button>
                 )}
+
               </div>
             );
           })}
