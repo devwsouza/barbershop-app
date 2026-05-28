@@ -28,25 +28,22 @@ export default function Clients() {
 
       if (Array.isArray(data)) {
         setClients(data);
-      } else {
-        setClients([]);
       }
 
     } catch (err) {
-      console.error("Erro ao carregar clientes:", err);
+      console.error(err);
     }
   };
 
-  // ✅ EDITAR CLIENTE
+  // ✅ EDITAR + ATUALIZAR SISTEMA TODO
   const editClient = async (client) => {
+    const name = prompt("Novo nome:", client.name);
+    const phone = prompt("Novo telefone:", client.phone);
+
+    if (!name || !phone) return;
+
     try {
-      const newName = prompt("Novo nome:", client.name);
-      const newPhone = prompt("Novo telefone:", client.phone);
-
-      if (!newName || !newPhone) return;
-
       const tenantId = getTenantId();
-      if (!tenantId) return;
 
       await fetch(
         `https://barbershop-full-gah5.onrender.com/clients/${client.id}`,
@@ -56,25 +53,20 @@ export default function Clients() {
             "Content-Type": "application/json",
             tenantId
           },
-          body: JSON.stringify({
-            name: newName,
-            phone: newPhone
-          })
+          body: JSON.stringify({ name, phone })
         }
       );
 
-      loadClients();
+      loadClients(); // ✅ atualiza lista
 
     } catch (err) {
-      console.error("Erro ao editar:", err);
+      console.error(err);
     }
   };
 
-  // ✅ EXCLUIR CLIENTE
   const deleteClient = async (id) => {
     try {
       const tenantId = getTenantId();
-      if (!tenantId) return;
 
       const res = await fetch(
         `https://barbershop-full-gah5.onrender.com/clients/${id}`,
@@ -84,19 +76,16 @@ export default function Clients() {
         }
       );
 
-      if (!res.ok) {
-        console.error("Erro ao excluir:", res.status);
-        return;
-      }
+      if (!res.ok) return;
 
       loadClients();
 
     } catch (err) {
-      console.error("Erro delete:", err);
+      console.error(err);
     }
   };
 
-  // ✅ HISTÓRICO DO CLIENTE
+  // ✅ HISTÓRICO CORRIGIDO
   const showHistory = async (client) => {
     try {
       const res = await fetch(
@@ -104,7 +93,7 @@ export default function Clients() {
       );
 
       if (!res.ok) {
-        alert("Erro ao carregar histórico");
+        alert("Sem histórico");
         return;
       }
 
@@ -121,8 +110,8 @@ export default function Clients() {
         `${client.name} teve ${data.length} atendimento(s)\n\nHorários: ${horarios || "Nenhum"}`
       );
 
-    } catch (err) {
-      console.error(err);
+    } catch {
+      alert("Erro ao carregar histórico");
     }
   };
 
@@ -175,23 +164,14 @@ export default function Clients() {
               <td>{client.phone}</td>
 
               <td>
-                <button onClick={() => editClient(client)}>
-                  Editar
-                </button>
-
-                <button onClick={() => deleteClient(client.id)}>
-                  Excluir
-                </button>
-
-                <button onClick={() => showHistory(client)}>
-                  Histórico
-                </button>
+                <button onClick={() => editClient(client)}>Editar</button>
+                <button onClick={() => deleteClient(client.id)}>Excluir</button>
+                <button onClick={() => showHistory(client)}>Histórico</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-
     </div>
   );
 }

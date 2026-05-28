@@ -24,13 +24,12 @@ export default function Home() {
     return null;
   };
 
-  // ✅ LOGOUT
   const logout = () => {
     localStorage.clear();
     window.location.href = "/login";
   };
 
-  // ✅ pegar nome do cliente
+  // ✅ nome do cliente atualizado sempre
   const getClientName = (clientId) => {
     const client = clients.find(c => c.id === clientId);
     return client ? client.name : "Cliente";
@@ -45,19 +44,21 @@ export default function Home() {
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/appointments",
         {
-          headers: { tenantId }
+          headers: { tenantId },
+          cache: "no-store"
         }
       );
 
       if (!res.ok) return;
 
       const data = await res.json();
+
       if (Array.isArray(data)) {
         setAppointments(data);
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("Erro appointments:", err);
     }
   };
 
@@ -70,19 +71,21 @@ export default function Home() {
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/clients",
         {
-          headers: { tenantId }
+          headers: { tenantId },
+          cache: "no-store"
         }
       );
 
       if (!res.ok) return;
 
       const data = await res.json();
+
       if (Array.isArray(data)) {
         setClients(data);
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("Erro clients:", err);
     }
   };
 
@@ -109,7 +112,8 @@ export default function Home() {
 
       setClientName("");
       setClientPhone("");
-      loadClients();
+
+      await loadClients(); // ✅ garante atualização imediata
 
     } catch (err) {
       console.error(err);
@@ -135,19 +139,20 @@ export default function Home() {
         })
       });
 
-      loadAppointments();
+      await loadAppointments();
 
     } catch (err) {
       console.error(err);
     }
   };
 
+  // ✅ CANCELAR (CORRIGIDO)
   const cancelAppointment = async (id) => {
     try {
       const tenantId = getTenantId();
       if (!tenantId) return;
 
-      await fetch(
+      const res = await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
         {
           method: "DELETE",
@@ -155,13 +160,19 @@ export default function Home() {
         }
       );
 
-      loadAppointments();
+      if (!res.ok) {
+        console.error("Erro ao cancelar:", res.status);
+        return;
+      }
+
+      await loadAppointments();
 
     } catch (err) {
-      console.error(err);
+      console.error("Erro ao cancelar:", err);
     }
   };
 
+  // ✅ SINCRONIZAÇÃO GLOBAL (🔥 resolve seu problema)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -176,6 +187,13 @@ export default function Home() {
     loadAppointments();
     loadClients();
 
+    // ✅ atualização automática contínua
+    const interval = setInterval(() => {
+      loadAppointments();
+      loadClients(); // 🔥 ESSENCIAL para atualizar nome do cliente
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -194,7 +212,6 @@ export default function Home() {
         <button onClick={logout} style={styles.logout}>
           Sair
         </button>
-        
       </div>
 
       <div style={styles.content}>
