@@ -11,34 +11,59 @@ export default function Clients() {
   };
 
   const loadClients = async () => {
-    const tenantId = getTenantId();
-    if (!tenantId) return;
+    try {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
 
-    const res = await fetch(
-      "https://barbershop-full-gah5.onrender.com/clients",
-      {
-        headers: { tenantId }
+      const res = await fetch(
+        "https://barbershop-full-gah5.onrender.com/clients",
+        {
+          headers: { tenantId }
+        }
+      );
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      if (Array.isArray(data)) {
+        setClients(data);
+      } else {
+        setClients([]); // ✅ evita crash
       }
-    );
 
-    const data = await res.json();
-    setClients(data);
+    } catch (err) {
+      console.error("Erro ao carregar clientes:", err);
+    }
   };
 
+  
   const deleteClient = async (id) => {
-    const tenantId = getTenantId();
-    if (!tenantId) return;
+    try {
+      const tenantId = getTenantId();
+      if (!tenantId) return;
 
-    await fetch(
-      `https://barbershop-full-gah5.onrender.com/clients/${id}`,
-      {
-        method: "DELETE",
-        headers: { tenantId }
+      const res = await fetch(
+        `https://barbershop-full-gah5.onrender.com/clients/${id}`,
+        {
+          method: "DELETE",
+          headers: { tenantId }
+        }
+      );
+
+      // ✅ não tenta ler JSON (evita crash)
+      if (!res.ok) {
+        console.error("Erro ao excluir:", res.status);
+        return;
       }
-    );
 
-    loadClients();
+      loadClients();
+
+    } catch (err) {
+      console.error("Erro delete:", err);
+    }
   };
+
 
   const logout = () => {
     localStorage.clear();
