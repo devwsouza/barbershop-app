@@ -33,7 +33,8 @@ export default function Home() {
     return client?.name || "Cliente";
   };
 
-  // ✅ LOAD APPOINTMENTS
+  // ===== LOAD =====
+
   const loadAppointments = async () => {
     try {
       const tenantId = getTenantId();
@@ -50,6 +51,7 @@ export default function Home() {
       if (!res.ok) return;
 
       const data = await res.json();
+
       if (Array.isArray(data)) {
         setAppointments(data);
       }
@@ -59,7 +61,6 @@ export default function Home() {
     }
   };
 
-  // ✅ LOAD CLIENTS
   const loadClients = async () => {
     try {
       const tenantId = getTenantId();
@@ -68,14 +69,14 @@ export default function Home() {
       const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/clients",
         {
-          headers: { tenantId },
-          cache: "no-store"
+          headers: { tenantId }
         }
       );
 
       if (!res.ok) return;
 
       const data = await res.json();
+
       if (Array.isArray(data)) {
         setClients(data);
       }
@@ -85,18 +86,21 @@ export default function Home() {
     }
   };
 
-  // ✅ CREATE CLIENT (instantâneo)
+  // ===== CLIENT =====
+
   const createClient = async () => {
     const tenantId = getTenantId();
     if (!tenantId) return;
 
+    const tempId = "temp-" + Math.random();
+
     const newClient = {
-      id: Math.random().toString(),
+      id: tempId,
       name: clientName,
       phone: clientPhone
     };
 
-    // 🚀 atualiza UI na hora
+    // ✅ UI imediata
     setClients(prev => [...prev, newClient]);
 
     try {
@@ -118,6 +122,7 @@ export default function Home() {
       setClientName("");
       setClientPhone("");
 
+      // ✅ sincroniza depois
       await loadClients();
 
     } catch (err) {
@@ -125,25 +130,31 @@ export default function Home() {
     }
   };
 
-  // ✅ CREATE APPOINTMENT (instantâneo)
+  // ===== APPOINTMENT =====
+
   const createAppointment = async (hora) => {
     const tenantId = getTenantId();
     if (!tenantId) return;
 
-    const tempId = Math.random().toString();
+    if (!selectedClient) {
+      alert("Selecione um cliente");
+      return;
+    }
+
+    const tempId = "temp-" + Math.random();
 
     const newAppointment = {
       id: tempId,
       barberId,
       time: hora,
-      clientId: selectedClient || null
+      clientId: selectedClient
     };
 
-    // 🚀 UI instantânea
+    // ✅ UI instantânea
     setAppointments(prev => [...prev, newAppointment]);
 
     try {
-      await fetch(
+      const res = await fetch(
         "https://barbershop-full-gah5.onrender.com/appointments",
         {
           method: "POST",
@@ -155,25 +166,27 @@ export default function Home() {
         }
       );
 
-      await loadAppointments();
+      // ✅ só sincroniza depois que backend confirmar
+      if (res.ok) {
+        setTimeout(loadAppointments, 500);
+      }
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ CANCEL APPOINTMENT (instantâneo)
   const cancelAppointment = async (id) => {
     const tenantId = getTenantId();
     if (!tenantId) return;
 
-    // 🚀 remove da UI imediatamente
+    // ✅ remove da UI
     setAppointments(prev =>
       prev.filter(a => a.id !== id)
     );
 
     try {
-      await fetch(
+      const res = await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/${id}`,
         {
           method: "DELETE",
@@ -181,14 +194,17 @@ export default function Home() {
         }
       );
 
-      await loadAppointments();
+      if (res.ok) {
+        setTimeout(loadAppointments, 500);
+      }
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ INIT + SYNC
+  // ===== INIT =====
+
   useEffect(() => {
     const tenantId = localStorage.getItem("tenantId");
 
@@ -201,20 +217,22 @@ export default function Home() {
     loadAppointments();
     loadClients();
 
-    // ✅ polling leve (backup)
+    // ✅ backup leve
     const interval = setInterval(() => {
       loadAppointments();
-    }, 5000);
+    }, 7000);
 
     return () => clearInterval(interval);
   }, []);
+
+  // ===== UI =====
 
   return (
     <div style={styles.container}>
 
       <div style={styles.header}>
         💈 Barbearia Pro
-        
+
         <div>
           <button
             onClick={() => window.location.href = "/clients"}
@@ -293,9 +311,7 @@ export default function Home() {
                 {agendamento ? (
                   <>
                     <span style={styles.clientName}>
-                      {agendamento.clientId
-                        ? getClientName(agendamento.clientId)
-                        : "Agendado"}
+                      {getClientName(agendamento.clientId)}
                     </span>
 
                     <button onClick={() => cancelAppointment(agendamento.id)}>
@@ -307,7 +323,6 @@ export default function Home() {
                     Agendar
                   </button>
                 )}
-
               </div>
             );
           })}
