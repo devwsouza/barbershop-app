@@ -29,10 +29,10 @@ export default function Home() {
     window.location.href = "/login";
   };
 
-  // ✅ nome do cliente atualizado sempre
+  // ✅ MAIS RÁPIDO
   const getClientName = (clientId) => {
     const client = clients.find(c => c.id === clientId);
-    return client ? client.name : "Cliente";
+    return client?.name || "Cliente";
   };
 
   // ✅ AGENDAMENTOS
@@ -89,7 +89,7 @@ export default function Home() {
     }
   };
 
-  // ✅ CRIAR CLIENTE
+  // ✅ CRIAR CLIENTE (ATUALIZA IMEDIATO)
   const createClient = async () => {
     try {
       const tenantId = getTenantId();
@@ -113,14 +113,14 @@ export default function Home() {
       setClientName("");
       setClientPhone("");
 
-      await loadClients(); // ✅ garante atualização imediata
+      await loadClients();
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ CRIAR AGENDAMENTO
+  // ✅ CRIAR AGENDAMENTO (SINCRONIZA CLIENTE TAMBÉM)
   const createAppointment = async (hora) => {
     try {
       const tenantId = getTenantId();
@@ -139,14 +139,16 @@ export default function Home() {
         })
       });
 
+      // ✅ sincronização imediata completa
       await loadAppointments();
+      await loadClients();
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ CANCELAR (CORRIGIDO)
+  // ✅ CANCELAR (SEGURANÇA + ATUALIZAÇÃO)
   const cancelAppointment = async (id) => {
     try {
       const tenantId = getTenantId();
@@ -172,7 +174,7 @@ export default function Home() {
     }
   };
 
-  // ✅ SINCRONIZAÇÃO GLOBAL (🔥 resolve seu problema)
+  // ✅ SINCRONIZAÇÃO (AGORA MAIS RÁPIDA)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -187,11 +189,11 @@ export default function Home() {
     loadAppointments();
     loadClients();
 
-    // ✅ atualização automática contínua
+    // 🚀 reduzido de 5s → 3s
     const interval = setInterval(() => {
       loadAppointments();
-      loadClients(); // 🔥 ESSENCIAL para atualizar nome do cliente
-    }, 5000);
+      loadClients();
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);

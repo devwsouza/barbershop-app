@@ -35,16 +35,16 @@ export default function Clients() {
     }
   };
 
-  // ✅ EDITAR + ATUALIZAR SISTEMA TODO
+  // ✅ EDITAR (ATUALIZA NA HORA)
   const editClient = async (client) => {
-    const name = prompt("Novo nome:", client.name);
-    const phone = prompt("Novo telefone:", client.phone);
+    const newName = prompt("Novo nome:", client.name);
+    const newPhone = prompt("Novo telefone:", client.phone);
 
-    if (!name || !phone) return;
+    if (!newName || !newPhone) return;
+
+    const tenantId = getTenantId();
 
     try {
-      const tenantId = getTenantId();
-
       await fetch(
         `https://barbershop-full-gah5.onrender.com/clients/${client.id}`,
         {
@@ -53,22 +53,28 @@ export default function Clients() {
             "Content-Type": "application/json",
             tenantId
           },
-          body: JSON.stringify({ name, phone })
+          body: JSON.stringify({ name: newName, phone: newPhone })
         }
       );
 
-      loadClients(); // ✅ atualiza lista
+      // ⚡ UPDATE IMEDIATO (SEM ESPERAR BACKEND)
+      setClients(prev =>
+        prev.map(c =>
+          c.id === client.id ? { ...c, name: newName, phone: newPhone } : c
+        )
+      );
 
     } catch (err) {
       console.error(err);
     }
   };
 
+  // ✅ EXCLUIR (REMOVE IMEDIATO DA TELA)
   const deleteClient = async (id) => {
-    try {
-      const tenantId = getTenantId();
+    const tenantId = getTenantId();
 
-      const res = await fetch(
+    try {
+      await fetch(
         `https://barbershop-full-gah5.onrender.com/clients/${id}`,
         {
           method: "DELETE",
@@ -76,33 +82,21 @@ export default function Clients() {
         }
       );
 
-      if (!res.ok) return;
-
-      loadClients();
+      // ⚡ REMOVE IMEDIATO
+      setClients(prev => prev.filter(c => c.id !== id));
 
     } catch (err) {
       console.error(err);
     }
   };
 
-  // ✅ HISTÓRICO CORRIGIDO
   const showHistory = async (client) => {
     try {
       const res = await fetch(
         `https://barbershop-full-gah5.onrender.com/appointments/client/${client.id}`
       );
 
-      if (!res.ok) {
-        alert("Sem histórico");
-        return;
-      }
-
       const data = await res.json();
-
-      if (!Array.isArray(data)) {
-        alert("Sem histórico");
-        return;
-      }
 
       const horarios = data.map(a => a.time).join(", ");
 
@@ -172,6 +166,7 @@ export default function Clients() {
           ))}
         </tbody>
       </table>
+
     </div>
   );
 }
