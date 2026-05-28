@@ -29,7 +29,7 @@ export default function Clients() {
       if (Array.isArray(data)) {
         setClients(data);
       } else {
-        setClients([]); // ✅ evita crash
+        setClients([]);
       }
 
     } catch (err) {
@@ -37,7 +37,40 @@ export default function Clients() {
     }
   };
 
-  
+  // ✅ EDITAR CLIENTE
+  const editClient = async (client) => {
+    try {
+      const newName = prompt("Novo nome:", client.name);
+      const newPhone = prompt("Novo telefone:", client.phone);
+
+      if (!newName || !newPhone) return;
+
+      const tenantId = getTenantId();
+      if (!tenantId) return;
+
+      await fetch(
+        `https://barbershop-full-gah5.onrender.com/clients/${client.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            tenantId
+          },
+          body: JSON.stringify({
+            name: newName,
+            phone: newPhone
+          })
+        }
+      );
+
+      loadClients();
+
+    } catch (err) {
+      console.error("Erro ao editar:", err);
+    }
+  };
+
+  // ✅ EXCLUIR CLIENTE
   const deleteClient = async (id) => {
     try {
       const tenantId = getTenantId();
@@ -51,7 +84,6 @@ export default function Clients() {
         }
       );
 
-      // ✅ não tenta ler JSON (evita crash)
       if (!res.ok) {
         console.error("Erro ao excluir:", res.status);
         return;
@@ -64,6 +96,35 @@ export default function Clients() {
     }
   };
 
+  // ✅ HISTÓRICO DO CLIENTE
+  const showHistory = async (client) => {
+    try {
+      const res = await fetch(
+        `https://barbershop-full-gah5.onrender.com/appointments/client/${client.id}`
+      );
+
+      if (!res.ok) {
+        alert("Erro ao carregar histórico");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!Array.isArray(data)) {
+        alert("Sem histórico");
+        return;
+      }
+
+      const horarios = data.map(a => a.time).join(", ");
+
+      alert(
+        `${client.name} teve ${data.length} atendimento(s)\n\nHorários: ${horarios || "Nenhum"}`
+      );
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const logout = () => {
     localStorage.clear();
@@ -112,9 +173,18 @@ export default function Clients() {
             <tr key={client.id}>
               <td>{client.name}</td>
               <td>{client.phone}</td>
+
               <td>
+                <button onClick={() => editClient(client)}>
+                  Editar
+                </button>
+
                 <button onClick={() => deleteClient(client.id)}>
                   Excluir
+                </button>
+
+                <button onClick={() => showHistory(client)}>
+                  Histórico
                 </button>
               </td>
             </tr>
